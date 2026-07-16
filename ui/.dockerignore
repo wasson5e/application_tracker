@@ -1,0 +1,6 @@
+# Exclude files that should not be copied into /usr/share/nginx/html
+#nginx.conf
+
+# Exclude local environment and dependency files
+.env
+node_modules

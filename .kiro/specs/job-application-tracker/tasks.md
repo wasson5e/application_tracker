@@ -87,26 +87,26 @@ Build the full Job Application Tracker stack: a Node.js/Express REST API, a vani
     - On `<select>` change issue `PUT /api/applications/:id` with `{ status: newValue }`; on success move/update the card in the DOM without full reload; on failure show inline error toast and revert `<select>` to previous value
   - **Requirement**: 3.1, 3.2, 3.3, 3.5, 3.6
 
-- [ ] 11. UI — notes view (`notes.html`)
+- [x] 11. UI — notes view (`notes.html`)
   - Create `ui/js/notes.js`:
     - On `DOMContentLoaded` call `GET /api/applications` and render one notes card per application showing company name, job title, and an editable `<textarea>` pre-populated with the current notes value
     - Each card has a "Save" button that issues `PUT /api/applications/:id` with `{ notes: textareaValue }`
     - On success display "Saved ✓" confirmation near the button (auto-hide after a few seconds); on failure display an error message near the button and leave textarea content unchanged
   - **Requirement**: 4.1, 4.2, 4.3, 4.4, 4.5
 
-- [~] 12. UI — Nginx configuration
+- [x] 12. UI — Nginx configuration
   - Create `ui/nginx.conf` configuring: server listening on port 80, `root /usr/share/nginx/html`, `index index.html`, and a `location /api/` block that `proxy_pass`es to `http://api:${API_PORT}/` (stripping the `/api` prefix) with appropriate proxy headers
   - **Requirement**: 10.2, 10.3
 
-- [~] 13. API Dockerfile
+- [x] 13. API Dockerfile
   - Create `api/Dockerfile` using `node:lts-alpine` as base, set `WORKDIR /app`, copy `package*.json`, run `npm ci --omit=dev`, copy source, set `CMD ["node", "src/server.js"]`
   - **Requirement**: 10.6
 
-- [~] 14. UI Dockerfile
+- [x] 14. UI Dockerfile
   - Create `ui/Dockerfile` using `nginx:alpine` as base, copy `ui/nginx.conf` to `/etc/nginx/conf.d/default.conf`, copy all static assets (`*.html`, `css/`, `js/`) to `/usr/share/nginx/html`
   - **Requirement**: 10.6
 
-- [~] 15. Docker Compose orchestration
+- [x] 15. Docker Compose orchestration
   - Create root-level `docker-compose.yml` with three services:
     - `db`: image `mongo:7`, named volume `mongo_data:/data/db`, healthcheck using `mongosh --eval "db.runCommand({ping:1})"` with start_period, interval, and retries configured
     - `api`: build `./api`, `env_file: .env`, `depends_on: db: condition: service_healthy`, exposes `API_PORT`
