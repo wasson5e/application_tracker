@@ -20,7 +20,11 @@ const WORK_ARRANGEMENTS = ['Remote', 'Hybrid', 'On-site'];
 const STATUSES = [
   'Applied',
   'Phone Screen',
-  'Interview',
+  'Interview 1',
+  'Interview 2',
+  'Interview 3',
+  'Interview 4',
+  'Interview 5',
   'Interviewing',
   'Offer',
   'Moving Forward',

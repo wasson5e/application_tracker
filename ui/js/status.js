@@ -20,7 +20,11 @@ import { apiFetch } from './api.js';
 const STATUSES = [
   'Applied',
   'Phone Screen',
-  'Interview',
+  'Interview 1',
+  'Interview 2',
+  'Interview 3',
+  'Interview 4',
+  'Interview 5',
   'Interviewing',
   'Offer',
   'Moving Forward',

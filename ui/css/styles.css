@@ -172,10 +172,34 @@ button {
   color: #6d28d9;
 }
 
-/* Interview — amber */
-.status-interview {
+/* Interview 1 — amber */
+.status-interview-1 {
   background-color: #fef3c7;
   color: #92400e;
+}
+
+/* Interview 2 — darker amber */
+.status-interview-2 {
+  background-color: #fde68a;
+  color: #78350f;
+}
+
+/* Interview 3 — deep amber */
+.status-interview-3 {
+  background-color: #fcd34d;
+  color: #451a03;
+}
+
+/* Interview 4 — warm brown */
+.status-interview-4 {
+  background-color: #fbbf24;
+  color: #451a03;
+}
+
+/* Interview 5 — gold */
+.status-interview-5 {
+  background-color: #f59e0b;
+  color: #ffffff;
 }
 
 /* Interviewing — orange */
@@ -795,6 +819,24 @@ dialog::backdrop {
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+/* ============================================================
+   Sankey / Flow View
+   ============================================================ */
+.sankey-container {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  box-shadow: var(--shadow-sm);
+  overflow-x: auto;
+}
+
+.sankey-container svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
 }
 
 /* ============================================================

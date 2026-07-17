@@ -16,11 +16,15 @@ describe('WORK_ARRANGEMENTS', () => {
 });
 
 describe('STATUS_VALUES', () => {
-  test('contains exactly the ten Application_Status values', () => {
+  test('contains exactly the fourteen Application_Status values', () => {
     expect(STATUS_VALUES).toEqual([
       'Applied',
       'Phone Screen',
-      'Interview',
+      'Interview 1',
+      'Interview 2',
+      'Interview 3',
+      'Interview 4',
+      'Interview 5',
       'Interviewing',
       'Offer',
       'Moving Forward',
