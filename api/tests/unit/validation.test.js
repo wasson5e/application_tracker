@@ -16,14 +16,17 @@ describe('WORK_ARRANGEMENTS', () => {
 });
 
 describe('STATUS_VALUES', () => {
-  test('contains exactly the seven Application_Status values', () => {
+  test('contains exactly the ten Application_Status values', () => {
     expect(STATUS_VALUES).toEqual([
       'Applied',
       'Phone Screen',
       'Interview',
+      'Interviewing',
       'Offer',
       'Moving Forward',
       'Passed On',
+      'Rescinded',
+      'Pulled',
       'Withdrawn',
     ]);
   });
@@ -221,6 +224,58 @@ describe('validateApplication() – create (isUpdate = false)', () => {
   test('accepts body that includes optional notes field', () => {
     const body = { ...validBody, notes: 'Follow up on Monday.' };
     const result = validateApplication(body);
+    expect(result.valid).toBe(true);
+  });
+
+  // ── mlMatch ────────────────────────────────────────────────────────────────
+
+  test('accepts mlMatch of 0', () => {
+    const body = { ...validBody, mlMatch: 0 };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(true);
+  });
+
+  test('accepts mlMatch of 100', () => {
+    const body = { ...validBody, mlMatch: 100 };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(true);
+  });
+
+  test('accepts mlMatch of 75.5 (decimal)', () => {
+    const body = { ...validBody, mlMatch: 75.5 };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(true);
+  });
+
+  test('rejects mlMatch below 0', () => {
+    const body = { ...validBody, mlMatch: -1 };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(false);
+    expect(result.fields).toHaveProperty('mlMatch');
+  });
+
+  test('rejects mlMatch above 100', () => {
+    const body = { ...validBody, mlMatch: 101 };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(false);
+    expect(result.fields).toHaveProperty('mlMatch');
+  });
+
+  test('rejects mlMatch that is a non-numeric string', () => {
+    const body = { ...validBody, mlMatch: 'high' };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(false);
+    expect(result.fields).toHaveProperty('mlMatch');
+  });
+
+  test('accepts mlMatch that is null (optional field absent)', () => {
+    const body = { ...validBody, mlMatch: null };
+    const result = validateApplication(body);
+    expect(result.valid).toBe(true);
+  });
+
+  test('accepts body without mlMatch (optional field)', () => {
+    const result = validateApplication(validBody);
     expect(result.valid).toBe(true);
   });
 

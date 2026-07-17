@@ -21,9 +21,12 @@ const STATUSES = [
   'Applied',
   'Phone Screen',
   'Interview',
+  'Interviewing',
   'Offer',
   'Moving Forward',
   'Passed On',
+  'Rescinded',
+  'Pulled',
   'Withdrawn',
 ];
 
@@ -133,7 +136,7 @@ function renderSkeleton() {
 // Application form HTML
 // ---------------------------------------------------------------------------
 
-function renderApplicationForm(app = {}) {
+function renderApplicationForm(app = {}, isEdit = false) {
   return `
     <form id="application-form" novalidate>
       <div class="form-group" id="fg-company">
@@ -166,10 +169,26 @@ function renderApplicationForm(app = {}) {
         </select>
         <span class="field-error" id="err-workArrangement" aria-live="polite"></span>
       </div>
+      ${isEdit ? `
+      <div class="form-group" id="fg-status">
+        <label for="f-status">Status</label>
+        <select id="f-status" name="status">
+          ${STATUSES.map(
+            (s) =>
+              `<option value="${s}" ${app.status === s ? 'selected' : ''}>${s}</option>`
+          ).join('')}
+        </select>
+        <span class="field-error" id="err-status" aria-live="polite"></span>
+      </div>` : ''}
       <div class="form-group" id="fg-payscale">
         <label for="f-payscale">Payscale <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
         <input type="text" id="f-payscale" name="payscale" value="${escapeHtml(app.payscale || '')}" />
         <span class="field-error" id="err-payscale" aria-live="polite"></span>
+      </div>
+      <div class="form-group" id="fg-mlMatch">
+        <label for="f-mlMatch">ML Match % <span style="font-weight:400;color:var(--color-text-muted)">(optional, 0–100)</span></label>
+        <input type="number" id="f-mlMatch" name="mlMatch" min="0" max="100" step="0.1" value="${app.mlMatch !== undefined && app.mlMatch !== null ? escapeHtml(String(app.mlMatch)) : ''}" />
+        <span class="field-error" id="err-mlMatch" aria-live="polite"></span>
       </div>
       <div class="form-group" id="fg-notes">
         <label for="f-notes">Notes <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
@@ -212,6 +231,7 @@ function renderList(applications) {
         <td>${escapeHtml(a.jobLocation)}</td>
         <td>${escapeHtml(a.workArrangement)}</td>
         <td><span class="status-badge ${statusClass(a.status)}">${escapeHtml(a.status)}</span></td>
+        <td>${a.mlMatch !== undefined && a.mlMatch !== null ? escapeHtml(String(a.mlMatch)) + '%' : '—'}</td>
         <td>${escapeHtml(formatTimestamp(a.appliedAt))}</td>
         <td>
           <div class="action-btns">
@@ -234,6 +254,7 @@ function renderList(applications) {
             <th>Location</th>
             <th>Arrangement</th>
             <th>Status</th>
+            <th>ML Match</th>
             <th>Applied At</th>
             <th>Actions</th>
           </tr>
@@ -312,8 +333,8 @@ function showFieldErrors(fields) {
   });
 }
 
-function getFormValues() {
-  return {
+function getFormValues(isEdit = false) {
+  const values = {
     company: document.getElementById('f-company').value.trim(),
     jobTitle: document.getElementById('f-jobTitle').value.trim(),
     jobDescription: document.getElementById('f-jobDescription').value.trim(),
@@ -322,6 +343,22 @@ function getFormValues() {
     payscale: document.getElementById('f-payscale').value.trim() || undefined,
     notes: document.getElementById('f-notes').value.trim() || undefined,
   };
+
+  // mlMatch is present in both add and edit forms
+  const mlMatchEl = document.getElementById('f-mlMatch');
+  if (mlMatchEl && mlMatchEl.value !== '') {
+    values.mlMatch = parseFloat(mlMatchEl.value);
+  }
+
+  // status select only exists in the edit form
+  if (isEdit) {
+    const statusEl = document.getElementById('f-status');
+    if (statusEl) {
+      values.status = statusEl.value;
+    }
+  }
+
+  return values;
 }
 
 // ---------------------------------------------------------------------------
@@ -339,7 +376,7 @@ function openAddModal() {
 
 async function submitAddForm() {
   clearFormErrors();
-  const payload = getFormValues();
+  const payload = getFormValues(false);
 
   try {
     await apiFetch('/applications', {
@@ -376,7 +413,7 @@ function openEditModal(id, applications) {
     return;
   }
 
-  document.getElementById('modal-body').innerHTML = renderApplicationForm(application);
+  document.getElementById('modal-body').innerHTML = renderApplicationForm(application, true);
   document.getElementById('modal-title').textContent = 'Edit Application';
 
   // Wire submit button
@@ -386,7 +423,7 @@ function openEditModal(id, applications) {
 
 async function submitEditForm(id) {
   clearFormErrors();
-  const payload = getFormValues();
+  const payload = getFormValues(true);
 
   try {
     await apiFetch(`/applications/${id}`, {

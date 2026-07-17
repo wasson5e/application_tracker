@@ -178,6 +178,12 @@ button {
   color: #92400e;
 }
 
+/* Interviewing — orange */
+.status-interviewing {
+  background-color: #ffedd5;
+  color: #9a3412;
+}
+
 /* Offer — green */
 .status-offer {
   background-color: #dcfce7;
@@ -194,6 +200,18 @@ button {
 .status-passed-on {
   background-color: #ffe4e6;
   color: #9f1239;
+}
+
+/* Rescinded — red */
+.status-rescinded {
+  background-color: #fee2e2;
+  color: #7f1d1d;
+}
+
+/* Pulled — slate */
+.status-pulled {
+  background-color: #e2e8f0;
+  color: #334155;
 }
 
 /* Withdrawn — gray */

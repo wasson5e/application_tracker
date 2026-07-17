@@ -21,9 +21,12 @@ const STATUS_VALUES = [
   'Applied',
   'Phone Screen',
   'Interview',
+  'Interviewing',
   'Offer',
   'Moving Forward',
   'Passed On',
+  'Rescinded',
+  'Pulled',
   'Withdrawn',
 ];
 
@@ -82,6 +85,14 @@ function validateApplication(body, isUpdate = false) {
   if (body.payscale !== undefined && body.payscale !== null) {
     if (String(body.payscale).length > 500) {
       fields.payscale = 'Must be 500 characters or fewer.';
+    }
+  }
+
+  // mlMatch validation (optional field — must be a number between 0 and 100 when provided).
+  if (body.mlMatch !== undefined && body.mlMatch !== null) {
+    const mlVal = Number(body.mlMatch);
+    if (!Number.isFinite(mlVal) || mlVal < 0 || mlVal > 100) {
+      fields.mlMatch = 'Must be a number between 0 and 100.';
     }
   }
 

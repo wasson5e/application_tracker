@@ -2,7 +2,7 @@
 
 const { Router } = require('express');
 const { ObjectId } = require('mongodb');
-const { validateApplication, validateStatus } = require('../validation');
+const { validateApplication, validateStatus, STATUS_VALUES } = require('../validation');
 
 /**
  * Returns an Express Router with all five application CRUD endpoints wired up.
@@ -58,6 +58,9 @@ function createRouter(db) {
         : null,
       notes: body.notes !== undefined && body.notes !== null
         ? String(body.notes)
+        : null,
+      mlMatch: body.mlMatch !== undefined && body.mlMatch !== null
+        ? Number(body.mlMatch)
         : null,
       status: 'Applied',
       appliedAt: new Date(),
@@ -132,7 +135,7 @@ function createRouter(db) {
 
     // Validate status enum if supplied (Requirement 3.4).
     if ('status' in updateFields && !validateStatus(updateFields.status)) {
-      fields.status = `Must be one of: ${['Applied', 'Phone Screen', 'Interview', 'Offer', 'Moving Forward', 'Passed On', 'Withdrawn'].join(', ')}.`;
+      fields.status = `Must be one of: ${STATUS_VALUES.join(', ')}.`;
     }
 
     if (!valid || Object.keys(fields).length > 0) {

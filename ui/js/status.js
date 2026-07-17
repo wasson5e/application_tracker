@@ -21,9 +21,12 @@ const STATUSES = [
   'Applied',
   'Phone Screen',
   'Interview',
+  'Interviewing',
   'Offer',
   'Moving Forward',
   'Passed On',
+  'Rescinded',
+  'Pulled',
   'Withdrawn',
 ];
 
