@@ -4,6 +4,7 @@
  * Responsibilities:
  *  - Render the page header + "Add Application" button
  *  - Load and display the applications table (sorted by appliedAt desc)
+ *  - Filter bar (Company, Location, Status) persisted to DB
  *  - Add Application modal (POST /api/applications)
  *  - Edit Application modal (PUT  /api/applications/:id)
  *  - Delete confirmation dialog (DELETE /api/applications/:id)
@@ -35,13 +36,18 @@ const STATUSES = [
 ];
 
 // ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+let _allApplications = [];
+let _filters = { company: '', location: '', status: '' };
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
 /**
  * Format an ISO date string as "YYYY-MM-DD HH:MM"
- * @param {string} isoString
- * @returns {string}
  */
 function formatTimestamp(isoString) {
   const d = new Date(isoString);
@@ -55,31 +61,9 @@ function formatTimestamp(isoString) {
 
 /**
  * Derive the CSS badge class from a status string.
- * e.g. "Phone Screen" → "status-phone-screen"
- * @param {string} status
- * @returns {string}
  */
 function statusClass(status) {
   return 'status-' + status.toLowerCase().replace(/\s+/g, '-');
-}
-
-// ---------------------------------------------------------------------------
-// DOM references (populated after mount)
-// ---------------------------------------------------------------------------
-
-const app = document.getElementById('app');
-
-// ---------------------------------------------------------------------------
-// Render helpers
-// ---------------------------------------------------------------------------
-
-function renderErrorBanner(message) {
-  return `
-    <div class="error-banner" role="alert">
-      <span>⚠</span>
-      <span>${escapeHtml(message)}</span>
-    </div>
-  `;
 }
 
 function escapeHtml(str) {
@@ -91,6 +75,75 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
+function renderErrorBanner(message) {
+  return `
+    <div class="error-banner" role="alert">
+      <span>⚠</span>
+      <span>${escapeHtml(message)}</span>
+    </div>
+  `;
+}
+
+// ---------------------------------------------------------------------------
+// Filter logic
+// ---------------------------------------------------------------------------
+
+function getFilteredApplications() {
+  return _allApplications.filter((a) => {
+    if (_filters.company && !a.company.toLowerCase().includes(_filters.company.toLowerCase())) {
+      return false;
+    }
+    if (_filters.location && !a.jobLocation.toLowerCase().includes(_filters.location.toLowerCase())) {
+      return false;
+    }
+    if (_filters.status && a.status !== _filters.status) {
+      return false;
+    }
+    return true;
+  });
+}
+
+async function saveFilters() {
+  try {
+    await apiFetch('/filters', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(_filters),
+    });
+  } catch (err) {
+    // Silently fail — filters are a convenience feature
+    console.warn('Failed to save filters:', err.message);
+  }
+}
+
+async function loadFilters() {
+  try {
+    const saved = await apiFetch('/filters');
+    _filters.company = saved.company || '';
+    _filters.location = saved.location || '';
+    _filters.status = saved.status || '';
+  } catch (err) {
+    // Use defaults if we can't load
+    console.warn('Failed to load filters:', err.message);
+  }
+}
+
+function getUniqueCompanies() {
+  const set = new Set(_allApplications.map((a) => a.company));
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+function getUniqueLocations() {
+  const set = new Set(_allApplications.map((a) => a.jobLocation));
+  return [...set].sort((a, b) => a.localeCompare(b));
+}
+
+// ---------------------------------------------------------------------------
+// DOM references
+// ---------------------------------------------------------------------------
+
+const app = document.getElementById('app');
+
 // ---------------------------------------------------------------------------
 // Page skeleton
 // ---------------------------------------------------------------------------
@@ -101,6 +154,7 @@ function renderSkeleton() {
       <h1 class="page-title">Applications</h1>
       <button class="btn btn-primary" id="btn-add-application">+ Add Application</button>
     </div>
+    <div id="filter-bar"></div>
     <div id="list-area"></div>
 
     <!-- Add / Edit modal -->
@@ -134,6 +188,71 @@ function renderSkeleton() {
       </div>
     </dialog>
   `;
+}
+
+// ---------------------------------------------------------------------------
+// Filter bar rendering
+// ---------------------------------------------------------------------------
+
+function renderFilterBar() {
+  const companies = getUniqueCompanies();
+  const locations = getUniqueLocations();
+
+  const filterBar = document.getElementById('filter-bar');
+  filterBar.innerHTML = `
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label for="filter-company">Company</label>
+        <select id="filter-company" aria-label="Filter by company">
+          <option value="">All Companies</option>
+          ${companies.map((c) => `<option value="${escapeHtml(c)}" ${_filters.company === c ? 'selected' : ''}>${escapeHtml(c)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-location">Location</label>
+        <select id="filter-location" aria-label="Filter by location">
+          <option value="">All Locations</option>
+          ${locations.map((l) => `<option value="${escapeHtml(l)}" ${_filters.location === l ? 'selected' : ''}>${escapeHtml(l)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" aria-label="Filter by status">
+          <option value="">All Statuses</option>
+          ${STATUSES.map((s) => `<option value="${escapeHtml(s)}" ${_filters.status === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-ghost" id="btn-clear-filters" ${!_filters.company && !_filters.location && !_filters.status ? 'disabled' : ''}>Clear Filters</button>
+    </div>
+  `;
+
+  // Wire filter events
+  document.getElementById('filter-company').addEventListener('change', handleFilterChange);
+  document.getElementById('filter-location').addEventListener('change', handleFilterChange);
+  document.getElementById('filter-status').addEventListener('change', handleFilterChange);
+  document.getElementById('btn-clear-filters').addEventListener('click', clearFilters);
+}
+
+function handleFilterChange() {
+  _filters.company = document.getElementById('filter-company').value;
+  _filters.location = document.getElementById('filter-location').value;
+  _filters.status = document.getElementById('filter-status').value;
+
+  renderList(getFilteredApplications());
+  saveFilters();
+
+  // Update clear button state
+  const clearBtn = document.getElementById('btn-clear-filters');
+  if (clearBtn) {
+    clearBtn.disabled = !_filters.company && !_filters.location && !_filters.status;
+  }
+}
+
+function clearFilters() {
+  _filters = { company: '', location: '', status: '' };
+  renderFilterBar();
+  renderList(getFilteredApplications());
+  saveFilters();
 }
 
 // ---------------------------------------------------------------------------
@@ -211,17 +330,32 @@ function renderList(applications) {
   const listArea = document.getElementById('list-area');
 
   if (applications.length === 0) {
-    listArea.innerHTML = `
-      <div class="empty-state">
-        <p>No applications recorded yet.</p>
-        <button class="btn btn-primary" id="btn-add-empty">+ Add your first application</button>
-      </div>
-    `;
-    document.getElementById('btn-add-empty').addEventListener('click', openAddModal);
+    const hasFilters = _filters.company || _filters.location || _filters.status;
+    if (hasFilters) {
+      listArea.innerHTML = `
+        <div class="empty-state">
+          <p>No applications match the current filters.</p>
+        </div>
+      `;
+    } else if (_allApplications.length === 0) {
+      listArea.innerHTML = `
+        <div class="empty-state">
+          <p>No applications recorded yet.</p>
+          <button class="btn btn-primary" id="btn-add-empty">+ Add your first application</button>
+        </div>
+      `;
+      document.getElementById('btn-add-empty').addEventListener('click', openAddModal);
+    } else {
+      listArea.innerHTML = `
+        <div class="empty-state">
+          <p>No applications match the current filters.</p>
+        </div>
+      `;
+    }
     return;
   }
 
-  // Sort descending by appliedAt (API should already return sorted, but enforce client-side too)
+  // Sort descending by appliedAt
   const sorted = [...applications].sort(
     (a, b) => new Date(b.appliedAt) - new Date(a.appliedAt)
   );
@@ -286,8 +420,9 @@ function renderList(applications) {
 async function loadApplications() {
   const listArea = document.getElementById('list-area');
   try {
-    const applications = await apiFetch('/applications');
-    renderList(applications);
+    _allApplications = await apiFetch('/applications');
+    renderFilterBar();
+    renderList(getFilteredApplications());
   } catch (err) {
     listArea.innerHTML = renderErrorBanner(
       'Failed to load applications. Please try again.'
@@ -307,7 +442,6 @@ function openModal(title) {
   const overlay = getModalOverlay();
   document.getElementById('modal-title').textContent = title;
   overlay.classList.add('modal-overlay--visible');
-  // Focus the first focusable element in the modal
   const first = overlay.querySelector('input, textarea, select, button');
   if (first) first.focus();
 }
@@ -348,13 +482,11 @@ function getFormValues(isEdit = false) {
     notes: document.getElementById('f-notes').value.trim() || undefined,
   };
 
-  // mlMatch is present in both add and edit forms
   const mlMatchEl = document.getElementById('f-mlMatch');
   if (mlMatchEl && mlMatchEl.value !== '') {
     values.mlMatch = parseFloat(mlMatchEl.value);
   }
 
-  // status select only exists in the edit form
   if (isEdit) {
     const statusEl = document.getElementById('f-status');
     if (statusEl) {
@@ -372,8 +504,6 @@ function getFormValues(isEdit = false) {
 function openAddModal() {
   document.getElementById('modal-body').innerHTML = renderApplicationForm();
   document.getElementById('modal-title').textContent = 'Add Application';
-
-  // Wire submit button
   document.getElementById('modal-submit').onclick = submitAddForm;
   openModal('Add Application');
 }
@@ -394,7 +524,6 @@ async function submitAddForm() {
     if (err.status === 400 && err.fields) {
       showFieldErrors(err.fields);
     } else {
-      // Show a general error as a banner inside the modal body
       const generalErr = document.createElement('div');
       generalErr.innerHTML = renderErrorBanner(
         err.message || 'An unexpected error occurred. Please try again.'
@@ -419,8 +548,6 @@ function openEditModal(id, applications) {
 
   document.getElementById('modal-body').innerHTML = renderApplicationForm(application, true);
   document.getElementById('modal-title').textContent = 'Edit Application';
-
-  // Wire submit button
   document.getElementById('modal-submit').onclick = () => submitEditForm(id);
   openModal('Edit Application');
 }
@@ -472,17 +599,14 @@ function openDeleteDialog(id, applications) {
   ).textContent = `Are you sure you want to delete ${label}? This action cannot be undone.`;
 
   _pendingDeleteId = id;
-
-  const dialog = document.getElementById('delete-dialog');
-  dialog.showModal();
+  document.getElementById('delete-dialog').showModal();
 }
 
 async function confirmDelete() {
   const id = _pendingDeleteId;
   if (!id) return;
 
-  const dialog = document.getElementById('delete-dialog');
-  dialog.close();
+  document.getElementById('delete-dialog').close();
   _pendingDeleteId = null;
 
   try {
@@ -508,21 +632,16 @@ function cancelDelete() {
 // ---------------------------------------------------------------------------
 
 function wireStaticEvents() {
-  // "Add Application" button in page header
   document.getElementById('btn-add-application').addEventListener('click', openAddModal);
-
-  // Modal close / cancel
   document.getElementById('modal-close').addEventListener('click', closeModal);
   document.getElementById('modal-cancel').addEventListener('click', closeModal);
 
-  // Close modal on backdrop click
   document.getElementById('modal-overlay').addEventListener('click', (e) => {
     if (e.target === document.getElementById('modal-overlay')) {
       closeModal();
     }
   });
 
-  // Close modal on Escape key
   document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
       const overlay = document.getElementById('modal-overlay');
@@ -532,7 +651,6 @@ function wireStaticEvents() {
     }
   });
 
-  // Delete dialog buttons
   document.getElementById('dialog-confirm').addEventListener('click', confirmDelete);
   document.getElementById('dialog-cancel').addEventListener('click', cancelDelete);
 }
@@ -544,5 +662,6 @@ function wireStaticEvents() {
 document.addEventListener('DOMContentLoaded', async () => {
   renderSkeleton();
   wireStaticEvents();
+  await loadFilters();
   await loadApplications();
 });

@@ -3,6 +3,7 @@
 const express = require('express');
 const morgan = require('morgan');
 const { createRouter } = require('./routes/applications');
+const { createFiltersRouter } = require('./routes/filters');
 
 /**
  * Creates and returns a configured Express application.
@@ -31,6 +32,9 @@ function createApp(db) {
 
   // 3. Application CRUD routes.
   app.use('/applications', createRouter(db));
+
+  // 3b. Filter preferences routes.
+  app.use('/filters', createFiltersRouter(db));
 
   // 4. 404 catch-all — any request that didn't match a route above.
   app.use((_req, res) => {

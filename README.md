@@ -1,7 +1,7 @@
 # Basic Job Application Tracking App
 
 ## Version
-0.0.3 - Updated to allow for tracking
+0.0.4 - Updated to allow for tracking
 - ML Match
 - Change application status
 - Sankey application flow
