@@ -15,13 +15,13 @@ const { createApp } = require('./app');
  */
 async function main() {
   // Step 1 – load config (exits on invalid/missing values).
-  const { port, mongodbUri, dbName } = loadConfig();
+  const { port, mongodbUri, dbName, resumePath } = loadConfig();
 
   // Step 2 – connect to MongoDB (exits on connection failure).
   const db = await connect(mongodbUri, dbName);
 
   // Step 3 – wire up Express app with the db handle.
-  const app = createApp(db);
+  const app = createApp(db, { resumePath });
 
   // Step 4 – start listening.
   app.listen(port, () => {

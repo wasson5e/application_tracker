@@ -313,6 +313,13 @@ function renderApplicationForm(app = {}, isEdit = false) {
         <input type="number" id="f-mlMatch" name="mlMatch" min="0" max="100" step="0.1" value="${app.mlMatch !== undefined && app.mlMatch !== null ? escapeHtml(String(app.mlMatch)) : ''}" />
         <span class="field-error" id="err-mlMatch" aria-live="polite"></span>
       </div>
+      ${isEdit ? `
+      <div class="form-group" id="fg-resume">
+        <label for="f-resume">Resume <span style="font-weight:400;color:var(--color-text-muted)">(PDF, DOCX, etc.)</span></label>
+        <input type="file" id="f-resume" name="resume" accept=".pdf,.doc,.docx,.txt,.rtf" />
+        ${app.resumePath ? `<span class="inline-feedback inline-feedback--success">Current: ${escapeHtml(app.resumePath.split('/').pop())}</span>` : ''}
+        <span class="field-error" id="err-resume" aria-live="polite"></span>
+      </div>` : ''}
       <div class="form-group" id="fg-notes">
         <label for="f-notes">Notes <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
         <textarea id="f-notes" name="notes">${escapeHtml(app.notes || '')}</textarea>
@@ -562,6 +569,29 @@ async function submitEditForm(id) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    // Handle resume upload if a file was selected
+    const resumeInput = document.getElementById('f-resume');
+    if (resumeInput && resumeInput.files.length > 0) {
+      const formData = new FormData();
+      formData.append('resume', resumeInput.files[0]);
+
+      const uploadRes = await fetch(`/api/applications/${id}/resume`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const errBody = await uploadRes.json().catch(() => null);
+        const errEl = document.getElementById('err-resume');
+        if (errEl) {
+          errEl.textContent = (errBody && errBody.error) || 'Failed to upload resume.';
+        }
+        // Don't close modal — let user see the error, but application was saved
+        return;
+      }
+    }
+
     closeModal();
     await loadApplications();
   } catch (err) {

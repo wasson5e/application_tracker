@@ -13,6 +13,10 @@ services:
   api:
     build: ./api
     env_file: .env
+    environment:
+      - RESUME_PATH=/data/resumes
+    volumes:
+      - ${RESUME_LOCAL_PATH:-./resumes}:/data/resumes
     expose:
       - "${API_PORT}"
     depends_on:

@@ -60,6 +60,7 @@ describe('config – loadConfig()', () => {
       port: 4000,
       mongodbUri: 'mongodb://localhost:27017',
       dbName: 'test_db',
+      resumePath: '/data/resumes',
     });
     expect(exitSpy).not.toHaveBeenCalled();
   });

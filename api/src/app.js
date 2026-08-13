@@ -4,6 +4,7 @@ const express = require('express');
 const morgan = require('morgan');
 const { createRouter } = require('./routes/applications');
 const { createFiltersRouter } = require('./routes/filters');
+const { createResumeRouter } = require('./routes/resume');
 
 /**
  * Creates and returns a configured Express application.
@@ -12,16 +13,16 @@ const { createFiltersRouter } = require('./routes/filters');
  *   1. express.json()        – parse JSON request bodies
  *   2. morgan                – HTTP request logger (stdout)
  *   3. /applications router  – all five CRUD endpoints
+ *   3b. /filters router      – filter preferences
+ *   3c. /applications/:id/resume – resume upload/download
  *   4. 404 catch-all         – returns { "error": "Not Found" }
  *   5. Global error handler  – logs stack to stderr, returns { "error": "Internal server error" }
  *
- * Using a factory keeps the db handle out of module-level state, which makes
- * the app easy to test in isolation by injecting a mock db object.
- *
  * @param {import('mongodb').Db} db - Connected MongoDB database handle
+ * @param {{ resumePath?: string }} [options] - Additional config options
  * @returns {import('express').Express}
  */
-function createApp(db) {
+function createApp(db, options = {}) {
   const app = express();
 
   // 1. Parse JSON bodies.
@@ -35,6 +36,11 @@ function createApp(db) {
 
   // 3b. Filter preferences routes.
   app.use('/filters', createFiltersRouter(db));
+
+  // 3c. Resume upload/download routes.
+  if (options.resumePath) {
+    app.use('/applications', createResumeRouter(db, options.resumePath));
+  }
 
   // 4. 404 catch-all — any request that didn't match a route above.
   app.use((_req, res) => {

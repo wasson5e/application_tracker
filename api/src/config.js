@@ -56,10 +56,14 @@ function loadConfig() {
     process.exit(1);
   }
 
+  // --- RESUME_PATH (optional, defaults to /data/resumes inside the container) ---
+  const resumePath = process.env.RESUME_PATH || '/data/resumes';
+
   return {
     port,
     mongodbUri,
     dbName,
+    resumePath,
   };
 }
 
