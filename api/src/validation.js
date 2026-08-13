@@ -31,6 +31,7 @@ const STATUS_VALUES = [
   'Passed On',
   'Rescinded',
   'Pulled',
+  'Ghosted',
   'Withdrawn',
 ];
 

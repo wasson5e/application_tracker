@@ -3,6 +3,7 @@
 const { Router } = require('express');
 const { ObjectId } = require('mongodb');
 const { validateApplication, validateStatus, STATUS_VALUES } = require('../validation');
+const { markGhostedApplications } = require('../ghostCheck');
 
 /**
  * Returns an Express Router with all five application CRUD endpoints wired up.
@@ -82,6 +83,9 @@ function createRouter(db) {
   // ---------------------------------------------------------------------------
   router.get('/', async (_req, res) => {
     try {
+      // Run ghost check before returning results to ensure freshness
+      await markGhostedApplications(db);
+
       const applications = await col()
         .find({})
         .sort({ appliedAt: -1 })

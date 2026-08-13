@@ -238,6 +238,12 @@ button {
   color: #334155;
 }
 
+/* Ghosted — muted gray-blue */
+.status-ghosted {
+  background-color: #f3f4f6;
+  color: #6b7280;
+}
+
 /* Withdrawn — gray */
 .status-withdrawn {
   background-color: #f1f5f9;

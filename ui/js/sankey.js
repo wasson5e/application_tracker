@@ -28,6 +28,7 @@ const STATUSES = [
   'Passed On',
   'Rescinded',
   'Pulled',
+  'Ghosted',
   'Withdrawn',
 ];
 
@@ -45,6 +46,7 @@ const STATUS_COLORS = {
   'Passed On': '#e11d48',
   'Rescinded': '#991b1b',
   'Pulled': '#475569',
+  'Ghosted': '#6b7280',
   'Withdrawn': '#64748b',
 };
 

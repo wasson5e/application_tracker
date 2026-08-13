@@ -3,6 +3,7 @@
 const { loadConfig } = require('./config');
 const { connect } = require('./db');
 const { createApp } = require('./app');
+const { startGhostChecker } = require('./ghostCheck');
 
 /**
  * Application entry point.
@@ -11,7 +12,8 @@ const { createApp } = require('./app');
  *   1. Load and validate configuration from environment / .env file.
  *   2. Connect to MongoDB (exits with code 1 on failure).
  *   3. Create the Express app with the live db handle.
- *   4. Start listening on API_PORT.
+ *   4. Start the ghost checker (marks old "Applied" apps as "Ghosted").
+ *   5. Start listening on API_PORT.
  */
 async function main() {
   // Step 1 – load config (exits on invalid/missing values).
@@ -23,7 +25,10 @@ async function main() {
   // Step 3 – wire up Express app with the db handle.
   const app = createApp(db, { resumePath });
 
-  // Step 4 – start listening.
+  // Step 4 – start ghost checker (runs immediately + every hour).
+  startGhostChecker(db);
+
+  // Step 5 – start listening.
   app.listen(port, () => {
     process.stdout.write(`API server listening on port ${port}\n`);
   });

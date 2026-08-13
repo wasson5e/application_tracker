@@ -222,6 +222,7 @@ describe('GET /applications', () => {
       find: jest.fn(() => ({
         sort: jest.fn(() => ({ toArray: jest.fn(async () => docs) })),
       })),
+      updateMany: jest.fn(async () => ({ modifiedCount: 0 })),
     };
     const router = createRouter(makeDb(collection));
     const req = makeReq();
@@ -241,6 +242,7 @@ describe('GET /applications', () => {
           toArray: jest.fn().mockRejectedValue(new Error('db down')),
         })),
       })),
+      updateMany: jest.fn(async () => ({ modifiedCount: 0 })),
     };
     const router = createRouter(makeDb(collection));
     const req = makeReq();

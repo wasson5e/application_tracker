@@ -31,6 +31,7 @@ const STATUSES = [
   'Passed On',
   'Rescinded',
   'Pulled',
+  'Ghosted',
   'Withdrawn',
 ];
 

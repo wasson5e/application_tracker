@@ -16,7 +16,7 @@ describe('WORK_ARRANGEMENTS', () => {
 });
 
 describe('STATUS_VALUES', () => {
-  test('contains exactly the fourteen Application_Status values', () => {
+  test('contains exactly the fifteen Application_Status values', () => {
     expect(STATUS_VALUES).toEqual([
       'Applied',
       'Phone Screen',
@@ -31,6 +31,7 @@ describe('STATUS_VALUES', () => {
       'Passed On',
       'Rescinded',
       'Pulled',
+      'Ghosted',
       'Withdrawn',
     ]);
   });
