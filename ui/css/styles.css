@@ -977,3 +977,55 @@ dialog::backdrop {
     padding: 0 12px;
   }
 }
+
+/* ============================================================
+   ML Match Page
+   ============================================================ */
+.mlmatch-cell {
+  position: relative;
+  min-width: 120px;
+}
+
+.mlmatch-bar {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  transform: translateY(-50%);
+  height: 6px;
+  border-radius: 3px;
+  background-color: var(--color-primary);
+  opacity: 0.2;
+  max-width: 100%;
+}
+
+.mlmatch-value {
+  position: relative;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+/* ============================================================
+   Today's Application Count
+   ============================================================ */
+.today-count-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+.today-count-label {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.today-count-value {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: var(--color-primary);
+}

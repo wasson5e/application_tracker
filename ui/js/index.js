@@ -155,6 +155,7 @@ function renderSkeleton() {
       <h1 class="page-title">Applications</h1>
       <button class="btn btn-primary" id="btn-add-application">+ Add Application</button>
     </div>
+    <div id="today-count"></div>
     <div id="filter-bar"></div>
     <div id="list-area"></div>
 
@@ -257,6 +258,33 @@ function clearFilters() {
 }
 
 // ---------------------------------------------------------------------------
+// Today's application count
+// ---------------------------------------------------------------------------
+
+/**
+ * Count applications submitted today and render the counter.
+ */
+function renderTodayCount() {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const count = _allApplications.filter((a) => {
+    const applied = new Date(a.appliedAt);
+    return applied >= today;
+  }).length;
+
+  const el = document.getElementById('today-count');
+  if (el) {
+    el.innerHTML = `
+      <div class="today-count-banner">
+        <span class="today-count-label">Applied today:</span>
+        <span class="today-count-value">${count}</span>
+      </div>
+    `;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Application form HTML
 // ---------------------------------------------------------------------------
 
@@ -314,13 +342,12 @@ function renderApplicationForm(app = {}, isEdit = false) {
         <input type="number" id="f-mlMatch" name="mlMatch" min="0" max="100" step="0.1" value="${app.mlMatch !== undefined && app.mlMatch !== null ? escapeHtml(String(app.mlMatch)) : ''}" />
         <span class="field-error" id="err-mlMatch" aria-live="polite"></span>
       </div>
-      ${isEdit ? `
       <div class="form-group" id="fg-resume">
         <label for="f-resume">Resume <span style="font-weight:400;color:var(--color-text-muted)">(PDF, DOCX, etc.)</span></label>
         <input type="file" id="f-resume" name="resume" accept=".pdf,.doc,.docx,.txt,.rtf" />
         ${app.resumePath ? `<span class="inline-feedback inline-feedback--success">Current: ${escapeHtml(app.resumePath.split('/').pop())}</span>` : ''}
         <span class="field-error" id="err-resume" aria-live="polite"></span>
-      </div>` : ''}
+      </div>
       <div class="form-group" id="fg-notes">
         <label for="f-notes">Notes <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
         <textarea id="f-notes" name="notes">${escapeHtml(app.notes || '')}</textarea>
@@ -430,6 +457,7 @@ async function loadApplications() {
   try {
     _allApplications = await apiFetch('/applications');
     renderFilterBar();
+    renderTodayCount();
     renderList(getFilteredApplications());
   } catch (err) {
     listArea.innerHTML = renderErrorBanner(
@@ -516,16 +544,58 @@ function openAddModal() {
   openModal('Add Application');
 }
 
+/**
+ * Upload the selected resume file (if any) for a given application id.
+ * @param {string} id - Application _id
+ * @returns {Promise<boolean>} true if there was no file or upload succeeded;
+ *   false if the upload failed (an inline error is shown and modal kept open).
+ */
+async function uploadResumeIfSelected(id) {
+  const resumeInput = document.getElementById('f-resume');
+  if (!resumeInput || resumeInput.files.length === 0) {
+    return true;
+  }
+
+  const formData = new FormData();
+  formData.append('resume', resumeInput.files[0]);
+
+  const uploadRes = await fetch(`/api/applications/${id}/resume`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!uploadRes.ok) {
+    const errBody = await uploadRes.json().catch(() => null);
+    const errEl = document.getElementById('err-resume');
+    if (errEl) {
+      errEl.textContent = (errBody && errBody.error) || 'Failed to upload resume.';
+    }
+    return false;
+  }
+
+  return true;
+}
+
 async function submitAddForm() {
   clearFormErrors();
   const payload = getFormValues(false);
 
   try {
-    await apiFetch('/applications', {
+    const created = await apiFetch('/applications', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
+
+    // Upload resume against the newly created application, if one was selected.
+    // The application itself was saved successfully, so keep the modal open on
+    // upload failure to surface the error.
+    const uploaded = await uploadResumeIfSelected(created._id);
+    if (!uploaded) {
+      await loadApplications();
+      return;
+    }
+
     closeModal();
     await loadApplications();
   } catch (err) {
@@ -571,26 +641,11 @@ async function submitEditForm(id) {
       body: JSON.stringify(payload),
     });
 
-    // Handle resume upload if a file was selected
-    const resumeInput = document.getElementById('f-resume');
-    if (resumeInput && resumeInput.files.length > 0) {
-      const formData = new FormData();
-      formData.append('resume', resumeInput.files[0]);
-
-      const uploadRes = await fetch(`/api/applications/${id}/resume`, {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const errBody = await uploadRes.json().catch(() => null);
-        const errEl = document.getElementById('err-resume');
-        if (errEl) {
-          errEl.textContent = (errBody && errBody.error) || 'Failed to upload resume.';
-        }
-        // Don't close modal — let user see the error, but application was saved
-        return;
-      }
+    // Handle resume upload if a file was selected.
+    // Don't close modal on failure — let user see the error, but application was saved.
+    const uploaded = await uploadResumeIfSelected(id);
+    if (!uploaded) {
+      return;
     }
 
     closeModal();

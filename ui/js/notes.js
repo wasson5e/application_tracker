@@ -15,6 +15,35 @@
 import { apiFetch } from './api.js';
 
 // ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+
+const STATUSES = [
+  'Applied',
+  'Phone Screen',
+  'Interview 1',
+  'Interview 2',
+  'Interview 3',
+  'Interview 4',
+  'Interview 5',
+  'Interviewing',
+  'Offer',
+  'Moving Forward',
+  'Passed On',
+  'Rescinded',
+  'Pulled',
+  'Ghosted',
+  'Withdrawn',
+];
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+
+let _allApplications = [];
+let _statusFilter = '';
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
@@ -100,8 +129,60 @@ function renderNotesCard(application) {
 }
 
 // ---------------------------------------------------------------------------
+// Filter logic
+// ---------------------------------------------------------------------------
+
+/**
+ * Return applications matching the current status filter.
+ * @returns {Array}
+ */
+function getFilteredApplications() {
+  if (!_statusFilter) return _allApplications;
+  return _allApplications.filter((a) => a.status === _statusFilter);
+}
+
+// ---------------------------------------------------------------------------
 // Page rendering
 // ---------------------------------------------------------------------------
+
+/**
+ * Render the status filter bar.
+ * @returns {string}
+ */
+function renderFilterBar() {
+  return `
+    <div class="filter-bar">
+      <div class="filter-group">
+        <label for="filter-status">Status</label>
+        <select id="filter-status" aria-label="Filter by status">
+          <option value="">All Statuses</option>
+          ${STATUSES.map((s) => `<option value="${escapeHtml(s)}" ${_statusFilter === s ? 'selected' : ''}>${escapeHtml(s)}</option>`).join('')}
+        </select>
+      </div>
+      <button class="btn btn-ghost" id="btn-clear-filter" ${!_statusFilter ? 'disabled' : ''}>Clear Filter</button>
+    </div>
+  `;
+}
+
+/**
+ * Render the notes grid from filtered applications.
+ */
+function renderNotesGrid() {
+  const filtered = getFilteredApplications();
+  const grid = document.getElementById('notes-grid');
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><p>No applications match the selected filter.</p></div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map((application) => renderNotesCard(application)).join('');
+
+  // Attach save button event listeners
+  grid.querySelectorAll('.btn-save-notes').forEach((btn) => {
+    btn.addEventListener('click', () => handleSave(btn.dataset.id));
+  });
+}
 
 /**
  * Render the full notes page structure into #app.
@@ -122,7 +203,7 @@ function renderPage(applications) {
     return;
   }
 
-  const cards = applications
+  const cards = getFilteredApplications()
     .map((application) => renderNotesCard(application))
     .join('');
 
@@ -130,6 +211,7 @@ function renderPage(applications) {
     <div class="page-header">
       <h1 class="page-title">Notes</h1>
     </div>
+    ${renderFilterBar()}
     <div class="notes-grid" id="notes-grid">
       ${cards}
     </div>
@@ -139,6 +221,29 @@ function renderPage(applications) {
   app.querySelectorAll('.btn-save-notes').forEach((btn) => {
     btn.addEventListener('click', () => handleSave(btn.dataset.id));
   });
+
+  // Wire filter events
+  document.getElementById('filter-status').addEventListener('change', handleFilterChange);
+  document.getElementById('btn-clear-filter').addEventListener('click', clearFilter);
+}
+
+/**
+ * Handle status filter dropdown change.
+ */
+function handleFilterChange() {
+  _statusFilter = document.getElementById('filter-status').value;
+  document.getElementById('btn-clear-filter').disabled = !_statusFilter;
+  renderNotesGrid();
+}
+
+/**
+ * Clear the status filter.
+ */
+function clearFilter() {
+  _statusFilter = '';
+  document.getElementById('filter-status').value = '';
+  document.getElementById('btn-clear-filter').disabled = true;
+  renderNotesGrid();
 }
 
 // ---------------------------------------------------------------------------
@@ -211,8 +316,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   try {
     // Requirement 4.1 — fetch all applications and display notes
-    const applications = await apiFetch('/applications');
-    renderPage(applications);
+    _allApplications = await apiFetch('/applications');
+    renderPage(_allApplications);
   } catch (err) {
     app.innerHTML = renderErrorBanner(
       'Failed to load applications. Please try again.'
