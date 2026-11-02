@@ -348,6 +348,12 @@ function renderApplicationForm(app = {}, isEdit = false) {
         ${app.resumePath ? `<span class="inline-feedback inline-feedback--success">Current: ${escapeHtml(app.resumePath.split('/').pop())}</span>` : ''}
         <span class="field-error" id="err-resume" aria-live="polite"></span>
       </div>
+      <div class="form-group" id="fg-coverLetter">
+        <label for="f-coverLetter">Cover Letter <span style="font-weight:400;color:var(--color-text-muted)">(PDF, DOCX, etc.)</span></label>
+        <input type="file" id="f-coverLetter" name="coverLetter" accept=".pdf,.doc,.docx,.txt,.rtf" />
+        ${app.coverLetterPath ? `<span class="inline-feedback inline-feedback--success">Current: ${escapeHtml(app.coverLetterPath.split('/').pop())}</span>` : ''}
+        <span class="field-error" id="err-coverLetter" aria-live="polite"></span>
+      </div>
       <div class="form-group" id="fg-notes">
         <label for="f-notes">Notes <span style="font-weight:400;color:var(--color-text-muted)">(optional)</span></label>
         <textarea id="f-notes" name="notes">${escapeHtml(app.notes || '')}</textarea>
@@ -545,35 +551,71 @@ function openAddModal() {
 }
 
 /**
- * Upload the selected resume file (if any) for a given application id.
- * @param {string} id - Application _id
+ * Upload a selected file (if any) to a document-upload endpoint for an application.
+ * @param {string} id        - Application _id
+ * @param {object} opts
+ * @param {string} opts.inputId  - DOM id of the file <input>
+ * @param {string} opts.field    - multipart field name expected by the API
+ * @param {string} opts.endpoint - endpoint suffix (e.g. "resume", "cover-letter")
+ * @param {string} opts.errorId  - DOM id of the inline error <span>
+ * @param {string} opts.label    - human label used in the fallback error message
  * @returns {Promise<boolean>} true if there was no file or upload succeeded;
  *   false if the upload failed (an inline error is shown and modal kept open).
  */
-async function uploadResumeIfSelected(id) {
-  const resumeInput = document.getElementById('f-resume');
-  if (!resumeInput || resumeInput.files.length === 0) {
+async function uploadFileIfSelected(id, opts) {
+  const input = document.getElementById(opts.inputId);
+  if (!input || input.files.length === 0) {
     return true;
   }
 
   const formData = new FormData();
-  formData.append('resume', resumeInput.files[0]);
+  formData.append(opts.field, input.files[0]);
 
-  const uploadRes = await fetch(`/api/applications/${id}/resume`, {
+  const uploadRes = await fetch(`/api/applications/${id}/${opts.endpoint}`, {
     method: 'POST',
     body: formData,
   });
 
   if (!uploadRes.ok) {
     const errBody = await uploadRes.json().catch(() => null);
-    const errEl = document.getElementById('err-resume');
+    const errEl = document.getElementById(opts.errorId);
     if (errEl) {
-      errEl.textContent = (errBody && errBody.error) || 'Failed to upload resume.';
+      errEl.textContent = (errBody && errBody.error) || `Failed to upload ${opts.label}.`;
     }
     return false;
   }
 
   return true;
+}
+
+/**
+ * Upload the selected resume file (if any) for a given application id.
+ * @param {string} id - Application _id
+ * @returns {Promise<boolean>}
+ */
+function uploadResumeIfSelected(id) {
+  return uploadFileIfSelected(id, {
+    inputId: 'f-resume',
+    field: 'resume',
+    endpoint: 'resume',
+    errorId: 'err-resume',
+    label: 'resume',
+  });
+}
+
+/**
+ * Upload the selected cover letter file (if any) for a given application id.
+ * @param {string} id - Application _id
+ * @returns {Promise<boolean>}
+ */
+function uploadCoverLetterIfSelected(id) {
+  return uploadFileIfSelected(id, {
+    inputId: 'f-coverLetter',
+    field: 'coverLetter',
+    endpoint: 'cover-letter',
+    errorId: 'err-coverLetter',
+    label: 'cover letter',
+  });
 }
 
 async function submitAddForm() {
@@ -587,11 +629,12 @@ async function submitAddForm() {
       body: JSON.stringify(payload),
     });
 
-    // Upload resume against the newly created application, if one was selected.
-    // The application itself was saved successfully, so keep the modal open on
-    // upload failure to surface the error.
-    const uploaded = await uploadResumeIfSelected(created._id);
-    if (!uploaded) {
+    // Upload resume + cover letter against the newly created application, if
+    // selected. The application itself was saved successfully, so keep the modal
+    // open on upload failure to surface the error.
+    const resumeOk = await uploadResumeIfSelected(created._id);
+    const coverLetterOk = await uploadCoverLetterIfSelected(created._id);
+    if (!resumeOk || !coverLetterOk) {
       await loadApplications();
       return;
     }
@@ -641,10 +684,11 @@ async function submitEditForm(id) {
       body: JSON.stringify(payload),
     });
 
-    // Handle resume upload if a file was selected.
+    // Handle resume + cover letter upload if a file was selected.
     // Don't close modal on failure — let user see the error, but application was saved.
-    const uploaded = await uploadResumeIfSelected(id);
-    if (!uploaded) {
+    const resumeOk = await uploadResumeIfSelected(id);
+    const coverLetterOk = await uploadCoverLetterIfSelected(id);
+    if (!resumeOk || !coverLetterOk) {
       return;
     }
 

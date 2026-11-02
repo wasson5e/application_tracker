@@ -37,7 +37,7 @@ function createApp(db, options = {}) {
   // 3b. Filter preferences routes.
   app.use('/filters', createFiltersRouter(db));
 
-  // 3c. Resume upload/download routes.
+  // 3c. Resume + cover letter upload/download routes.
   if (options.resumePath) {
     app.use('/applications', createResumeRouter(db, options.resumePath));
   }

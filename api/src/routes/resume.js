@@ -112,6 +112,93 @@ function createResumeRouter(db, resumePath) {
   });
 
   // ---------------------------------------------------------------------------
+  // POST /applications/:id/cover-letter — upload a cover letter for an application
+  // ---------------------------------------------------------------------------
+  router.post('/:id/cover-letter', upload.single('coverLetter'), async (req, res) => {
+    const oid = parseObjectId(req.params.id);
+    if (!oid) {
+      // Clean up uploaded temp file
+      if (req.file) fs.unlinkSync(req.file.path);
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    if (!req.file) {
+      return res.status(400).json({ error: 'No file uploaded. Field name must be "coverLetter".' });
+    }
+
+    try {
+      // Look up the application to get company and job title
+      const application = await col().findOne({ _id: oid });
+      if (!application) {
+        fs.unlinkSync(req.file.path);
+        return res.status(404).json({ error: 'Application not found' });
+      }
+
+      const companyFolder = sanitizeFolderName(application.company);
+      const jobTitleFolder = sanitizeFolderName(application.jobTitle);
+      const targetDir = path.join(resumePath, companyFolder, jobTitleFolder);
+
+      // Create the directory structure if it doesn't exist (same folder as the resume)
+      fs.mkdirSync(targetDir, { recursive: true });
+
+      // Determine final file name (preserve original extension)
+      const originalName = req.file.originalname;
+      const targetPath = path.join(targetDir, originalName);
+
+      // Move the file from temp to final location
+      fs.renameSync(req.file.path, targetPath);
+
+      // Store the relative path in the application document
+      const relativePath = path.join(companyFolder, jobTitleFolder, originalName);
+      await col().updateOne(
+        { _id: oid },
+        { $set: { coverLetterPath: relativePath } }
+      );
+
+      return res.status(200).json({
+        message: 'Cover letter uploaded successfully',
+        coverLetterPath: relativePath,
+      });
+    } catch (err) {
+      // Clean up temp file on error
+      if (req.file && fs.existsSync(req.file.path)) {
+        fs.unlinkSync(req.file.path);
+      }
+      return res.status(503).json({
+        error: 'Failed to upload cover letter. Please try again later.',
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
+  // GET /applications/:id/cover-letter — download the cover letter file
+  // ---------------------------------------------------------------------------
+  router.get('/:id/cover-letter', async (req, res) => {
+    const oid = parseObjectId(req.params.id);
+    if (!oid) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+
+    try {
+      const application = await col().findOne({ _id: oid });
+      if (!application || !application.coverLetterPath) {
+        return res.status(404).json({ error: 'No cover letter found for this application' });
+      }
+
+      const filePath = path.join(resumePath, application.coverLetterPath);
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ error: 'Cover letter file not found on disk' });
+      }
+
+      return res.download(filePath);
+    } catch (err) {
+      return res.status(503).json({
+        error: 'Failed to retrieve cover letter. Please try again later.',
+      });
+    }
+  });
+
+  // ---------------------------------------------------------------------------
   // GET /applications/:id/resume — download the resume file
   // ---------------------------------------------------------------------------
   router.get('/:id/resume', async (req, res) => {
